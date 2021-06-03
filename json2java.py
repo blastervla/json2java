@@ -17,13 +17,6 @@ def toLowerCamelCase(snakeStr):
     return components[0] + ''.join(x.title() for x in components[1:])
 
 
-def nextClassName(lastClassName):
-    if lastClassName[-1] == "z":
-        return lastClassName + "a"
-    else:
-        return lastClassName[:-1] + chr(ord(lastClassName[-1]) + 1)
-
-
 def mostGenericType(typesList):
     mostGeneric = typesList[0]
     for type in typesList:
@@ -54,10 +47,7 @@ def mostGenericType(typesList):
     return mostGeneric
 
 
-defaultClassName = "a"
-
-
-def recursiveJson2Java(schema, name, isTopLevel, topLevelOnly):
+def recursiveJson2Java(schema, name, isTopLevel, topLevelOnly, levelIndent):
     if "type" in schema:
         schemaType = schema["type"]
     else:
@@ -71,15 +61,15 @@ def recursiveJson2Java(schema, name, isTopLevel, topLevelOnly):
         className = getClassName(name)
         res = ""
         if "properties" in schema and (not topLevelOnly or isTopLevel):
-            res += "public " + ("" if isTopLevel else "static ") + "class " + className + " {\n"
+            res += levelIndent + "public " + ("" if isTopLevel else "static ") + "class " + className + " {\n"
             for prop in schema["properties"]:
-                res += recursiveJson2Java(schema["properties"][prop], prop, False, topLevelOnly)
-            res += "}\n"
+                res += recursiveJson2Java(schema["properties"][prop], prop, False, topLevelOnly, levelIndent + "    ")
+            res += levelIndent + "}\n"
         else:
             className = "Map<String, Object>"
 
         if not isTopLevel:
-            res += "public " + className + " " + toLowerCamelCase(name) + ";\n"
+            res += levelIndent + "public " + className + " " + toLowerCamelCase(name) + ";\n"
 
         return res
     elif schemaType == "array":
@@ -89,39 +79,36 @@ def recursiveJson2Java(schema, name, isTopLevel, topLevelOnly):
             itemsType = schema["items"]["type"]
 
         if itemsType == "object":
-            global defaultClassName
             className = getClassName(name.rstrip("s"))
-            # className = defaultClassName.upper() if not topLevelOnly else "Map<String, Object>"
-            # defaultClassName = nextClassName(defaultClassName)
-            res = "public List<" + className + "> " + toLowerCamelCase(name) + ";\n"
+            res = levelIndent + "public List<" + className + "> " + toLowerCamelCase(name) + ";\n"
             if not topLevelOnly:
-                recRes = recursiveJson2Java(schema["items"], className, False, topLevelOnly)
-                recRes = '\n'.join(recRes.split('\n')[:-2])
+                recRes = recursiveJson2Java(schema["items"], className, False, topLevelOnly, levelIndent)
+                recRes = '\n'.join(recRes.split('\n')[:-2]) + "\n"
                 res += recRes
             return res
         elif itemsType == "string":
-            return "public List<String> " + toLowerCamelCase(name) + ";\n"
+            return levelIndent + "public List<String> " + toLowerCamelCase(name) + ";\n"
         elif itemsType == "integer":
-            return "public List<Integer> " + toLowerCamelCase(name) + ";\n"
+            return levelIndent + "public List<Integer> " + toLowerCamelCase(name) + ";\n"
         elif itemsType == "number":
-            return "public List<Float> " + toLowerCamelCase(name) + ";\n"
+            return levelIndent + "public List<Float> " + toLowerCamelCase(name) + ";\n"
         elif itemsType == "boolean":
-            return "public List<Boolean> " + toLowerCamelCase(name) + ";\n"
+            return levelIndent + "public List<Boolean> " + toLowerCamelCase(name) + ";\n"
         elif itemsType == "null":
-            return "public List<Object> " + toLowerCamelCase(name) + "; // Was null in JSON\n"
+            return levelIndent + "public List<Object> " + toLowerCamelCase(name) + "; // Was null in JSON\n"
         else:
             print("UNKNOWN TYPE '" + itemsType + "' in array")
             return "ERROR\n"
     elif schemaType == "string":
-        return "public String " + toLowerCamelCase(name) + ";\n"
+        return levelIndent + "public String " + toLowerCamelCase(name) + ";\n"
     elif schemaType == "integer":
-        return "public Integer " + toLowerCamelCase(name) + ";\n"
+        return levelIndent + "public Integer " + toLowerCamelCase(name) + ";\n"
     elif schemaType == "number":
-        return "public Float " + toLowerCamelCase(name) + ";\n"
+        return levelIndent + "public Float " + toLowerCamelCase(name) + ";\n"
     elif schemaType == "boolean":
-        return "public Boolean " + toLowerCamelCase(name) + ";\n"
+        return levelIndent + "public Boolean " + toLowerCamelCase(name) + ";\n"
     elif schemaType == "null":
-        return "public Object " + toLowerCamelCase(name) + "; // Was null in JSON\n"
+        return levelIndent + "public Object " + toLowerCamelCase(name) + "; // Was null in JSON\n"
     else:
         print("UNKNOWN TYPE '" + schemaType + "'")
         return "ERROR\n"
@@ -141,4 +128,4 @@ schemaBuilder = SchemaBuilder()
 schemaBuilder.add_object(json.loads(lines))
 schema = schemaBuilder.to_schema()
 
-print(recursiveJson2Java(schema, name, True, isTopLevelOnly))
+print(recursiveJson2Java(schema, name, True, isTopLevelOnly, ""))
