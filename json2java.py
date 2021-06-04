@@ -1,5 +1,12 @@
 import json
+import os
+
+from colorama import Fore, Style, init
 from genson import SchemaBuilder
+
+
+def clearScreen():
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 
 def getClassName(snakeStr):
@@ -73,7 +80,7 @@ def toJavaList(schema, name, topLevelOnly, levelIndent):
     else:
         itemsType = schema["items"]["type"]
     if itemsType == "object":
-        className = getClassName(name.rstrip("s"))
+        className = getClassName(name.rstrip("s")) if not topLevelOnly else "Map<String, Object>"
         res = levelIndent + "public List<" + className + "> " + toLowerCamelCase(name) + ";\n"
         if not topLevelOnly:
             recRes = recursiveJson2Java(schema["items"], className, False, topLevelOnly, levelIndent)
@@ -119,12 +126,22 @@ def toJavaObject(schema, name, isTopLevel, topLevelOnly, levelIndent):
 
 # ====== MAIN FLOW ====== #
 
-name = input("Gimme a name (ANY name) for the Java class\n")
+init()
 
-isTopLevelOnly = "S" in input("Would you like to have a [S]hallow (Maps) or [D]eep (Model objects) model?\n")
+name = input(Style.NORMAL + Fore.CYAN + "Gimme a name (ANY name) for the Java class\n" + Style.RESET_ALL)
+
+isTopLevelOnly = "S" in input(Fore.CYAN + "Would you like to have a ["
+                              + Style.RESET_ALL + Style.BRIGHT + "S"
+                              + Style.RESET_ALL + Fore.CYAN + Style.NORMAL + "]hallow (Maps) or["
+                              + Style.RESET_ALL + Style.BRIGHT + "D"
+                              + Style.RESET_ALL + Fore.CYAN + Style.NORMAL + "]eep (Model objects) model?\n"
+                              + Style.RESET_ALL)
 
 lines = ""
-x = input("Gimme a json, and I'll do the magic\n")
+x = input(Fore.CYAN
+          + "Gimme a json, hit ENTER twice, and I'll do the magic\nTIP: Input it with line breaks if it's"
+            "really big, since some terminals only admit a maximum amount of characters per line.\n "
+          + Style.RESET_ALL)
 while x:
     lines += x + "\n"
     x = input()
@@ -132,5 +149,11 @@ while x:
 schemaBuilder = SchemaBuilder()
 schemaBuilder.add_object(json.loads(lines))
 schema = schemaBuilder.to_schema()
+
+print(Style.RESET_ALL + Fore.CYAN + "\n\n======================================")
+print(Style.RESET_ALL + Fore.CYAN + "====== Javification in progress ======")
+print(Style.RESET_ALL + Fore.CYAN + "======================================\n\n" + Style.RESET_ALL)
+
+clearScreen()
 
 print(recursiveJson2Java(schema, name, True, isTopLevelOnly, ""))
